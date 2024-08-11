@@ -1,1 +1,198 @@
-Final implementation and FPS 
+/*
+ * Copyright 2019 Xilinx Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <glog/logging.h>
+#include <iostream>
+#include <memory>
+#include <opencv2/opencv.hpp>
+#include <vitis/ai/facedetectrecog.hpp>
+#include <cmath>
+#include <array>
+#include <vector>
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <queue>
+
+// Function to normalize feature vector
+std::vector<float> normalize_feature(const std::array<int8_t, 512>& feature) {
+    std::vector<float> normalized(feature.size());
+    float norm = 0.0;
+    for (size_t i = 0; i < feature.size(); ++i) {
+        norm += feature[i] * feature[i];
+    }
+    norm = std::sqrt(norm);
+    for (size_t i = 0; i < feature.size(); ++i) {
+        normalized[i] = static_cast<float>(feature[i]) / norm;
+    }
+    return normalized;
+}
+
+// Function to calculate cosine similarity between two feature vectors
+float calculate_cosine_similarity(const std::array<int8_t, 512>& f1, const std::array<int8_t, 512>& f2) {
+    auto nf1 = normalize_feature(f1);
+    auto nf2 = normalize_feature(f2);
+
+    float dot_product = 0.0;
+    for (size_t i = 0; i < nf1.size(); ++i) {
+        dot_product += nf1[i] * nf2[i];
+    }
+    return dot_product;
+}
+
+// Function to process face detection and recognition results
+cv::Mat process_result(cv::Mat &m1, const vitis::ai::FaceDetectRecogFixedResult &result, const std::vector<std::pair<std::string, std::array<int8_t, 512>>>& reference_features) {
+    cv::Mat image = m1.clone();
+
+    // Iterate over detected faces and draw bounding boxes with similarity scores
+    for (size_t i = 0; i < result.rects.size(); ++i) {
+        const auto &r = result.rects[i];
+
+        // Find the reference image with the highest similarity score
+        float max_similarity = -1.0;
+        std::string best_match = "Unknown";
+        for (const auto& ref : reference_features) {
+            float similarity_score = calculate_cosine_similarity(result.features[i], ref.second);
+            if (similarity_score > max_similarity) {
+                max_similarity = similarity_score;
+                best_match = ref.first;
+            }
+        }
+        
+        std::string similarity_text = (max_similarity > 0.65 ? "Abheek" : "Unknown") + ": " + std::to_string(max_similarity);
+
+        // Draw a rectangle around each detected face with the best match similarity score
+        cv::rectangle(image,
+                      cv::Rect(cv::Point(r.x * image.cols, r.y * image.rows),
+                               cv::Size(static_cast<int>(r.width * image.cols),
+                                        static_cast<int>(r.height * image.rows))),
+                      cv::Scalar(255, 0, 0), 2);  // Rectangle color (blue)
+
+        // Display the best match and similarity score on the image inside the bounding box
+        cv::putText(image, similarity_text,
+                    cv::Point(r.x * image.cols, r.y * image.rows - 5),  // Position the text above the box
+                    cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);  // Text color (green)
+    }
+    return image;  // Return the processed image
+}
+
+int main(int argc, char *argv[]) {
+    google::InitGoogleLogging(argv[0]);
+
+    if (argc < 6) {
+        std::cerr << "Usage: " << argv[0] << " <detection_model> <landmark_model> <recognition_model> <video_source> <reference_image1> [<reference_image2> ...]" << std::endl;
+        return 1;
+    }
+
+    std::string detection_model = argv[1];
+    std::string landmark_model = argv[2];
+    std::string recognition_model = argv[3];
+    std::string video_source = argv[4];
+
+    // Load and extract features from reference images
+    std::vector<std::pair<std::string, std::array<int8_t, 512>>> reference_features;
+    auto face_detect_recog = vitis::ai::FaceDetectRecog::create(detection_model, landmark_model, recognition_model, true);
+    for (int i = 5; i < argc; ++i) {
+        cv::Mat reference_image = cv::imread(argv[i]);
+        if (reference_image.empty()) {
+            std::cerr << "Error: Could not load reference image " << argv[i] << std::endl;
+            continue;
+        }
+        auto ref_results = face_detect_recog->run_fixed(reference_image);
+        if (!ref_results.features.empty()) {
+            reference_features.emplace_back(argv[i], ref_results.features[0]);
+        } else {
+            std::cerr << "Error: Could not extract features from reference image " << argv[i] << std::endl;
+        }
+    }
+
+    // Open video capture
+    cv::VideoCapture cap(video_source);
+    if (!cap.isOpened()) {
+        std::cerr << "Error: Could not open video source " << video_source << std::endl;
+        return 1;
+    }
+
+    cv::Mat frame;
+    int frame_width = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
+    int frame_height = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+    cv::Size frame_size(frame_width, frame_height);
+
+    // Use display port for output
+    cv::VideoWriter video_out("appsrc ! videoconvert ! autovideosink", cv::CAP_GSTREAMER, 0, 30, frame_size, true);
+    if (!video_out.isOpened()) {
+        std::cerr << "Error: Could not open video output" << std::endl;
+        return 1;
+    }
+
+    std::queue<cv::Mat> frame_queue;
+    std::mutex queue_mutex;
+    std::atomic<bool> running{true};
+
+    // Frame processing thread
+    std::thread processing_thread([&]() {
+        while (running) {
+            cv::Mat frame;
+            {
+                std::lock_guard<std::mutex> lock(queue_mutex);
+                if (!frame_queue.empty()) {
+                    frame = frame_queue.front();
+                    frame_queue.pop();
+                }
+            }
+            if (!frame.empty()) {
+                // Run detection and recognition
+                auto results = face_detect_recog->run_fixed(frame);
+
+                // Process results and display
+                auto display_frame = process_result(frame, results, reference_features);
+                video_out.write(display_frame);
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Reduce CPU usage
+        }
+    });
+
+    // FPS calculation
+    int frame_count = 0;
+    auto start_time = std::chrono::steady_clock::now();
+
+    while (cap.read(frame)) {
+        cv::resize(frame, frame, cv::Size(640, 360));  // Reduce resolution for faster processing
+        {
+            std::lock_guard<std::mutex> lock(queue_mutex);
+            frame_queue.push(frame);
+        }
+
+        frame_count++;
+        auto end_time = std::chrono::steady_clock::now();
+        std::chrono::duration<double> elapsed = end_time - start_time;
+        if (elapsed.count() >= 1.0) {
+            std::cout << "FPS: " << frame_count / elapsed.count() << std::endl;
+            frame_count = 0;
+            start_time = end_time;
+        }
+
+        if (cv::waitKey(30) >= 0) break;  // Exit on any key press
+    }
+
+    running = false;
+    processing_thread.join();
+
+    cap.release();
+    cv::destroyAllWindows();
+    return 0;
+}
+
