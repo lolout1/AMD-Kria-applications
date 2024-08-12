@@ -17,7 +17,7 @@ The Kria KV260 mounts the Kria-26 SOM to a development board providing a ready t
   Provides a comprehensive set of tools for optimizing, quantizing, compiling, and deploying AI models on Xilinx FPGAs. 
 - VVAS
   Framework for video analytics capabiltiies such as utilizing Gstreamer which is much faster at communicating with the I/O peripherials compared to Open CV for example.
--   Vivado
+-   Vivado Platform
   Generates custom overlay, allows you to configure and customize DPU/any Hardware
   Vitis software toolchain
   
