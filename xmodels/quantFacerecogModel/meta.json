@@ -1,0 +1,8 @@
+{
+    "lib": "libvart-dpu-runner.so",
+    "filename": "facerec-resnet20_mixed_pt.xmodel",
+    "kernel": [
+        "subgraph_Resnet__Resnet_Linear_448(TransferMatMulToConv2d)"
+    ],
+    "target": "DPUCZDX8G_ISA1_B3136"
+}

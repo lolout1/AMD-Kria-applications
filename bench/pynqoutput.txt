@@ -1,0 +1,197 @@
+
+import cv2
+import numpy as np
+import face_recognition
+from pynq.lib.video import DisplayPort, VideoMode, PIXEL_RGB
+import pickle
+import time
+from threading import Thread, Lock
+
+# Load face encodings and names
+try:
+    with open('encoding_face.pkl', 'rb') as f:
+        data = pickle.load(f)
+        known_face_encodings = data['encodings']
+        known_face_names = data['names']
+except FileNotFoundError:
+    print("File not found: encoding_face.pkl")
+    exit(1)
+except Exception as e:
+    print(f"Error loading face encodings: {e}")
+    exit(1)
+
+# Camera configuration
+frame_in_w = 640
+frame_in_h = 480
+fps = 30
+
+videoIn = cv2.VideoCapture(0 + cv2.CAP_V4L2)
+videoIn.set(cv2.CAP_PROP_FRAME_WIDTH, frame_in_w)
+videoIn.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_in_h)
+videoIn.set(cv2.CAP_PROP_FPS, fps)
+
+if not videoIn.isOpened():
+    print("Failed to open camera.")
+    exit(1)
+
+# DisplayPort configuration
+Mode = VideoMode(frame_in_w, frame_in_h, 24)
+displayport = DisplayPort()
+
+try:
+    displayport.configure(Mode, PIXEL_RGB)
+    print(f"DisplayPort configured to {Mode.width}x{Mode.height}.")
+except Exception as e:
+    print(f"Error configuring DisplayPort: {e}")
+    exit(1)
+
+# Shared data
+frame_lock = Lock()
+current_frame = None
+face_recognition_results = []
+
+def capture_frames():
+    global current_frame
+    while True:
+        ret, frame = videoIn.read()
+        if ret:
+            # Preprocess frame
+            frame = preprocess_frame(frame)
+            with frame_lock:
+                current_frame = frame.copy()
+
+def preprocess_frame(frame):
+    # Resize frame for faster processing
+    scale_factor = 0.25
+    frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
+
+    return frame
+
+def process_frame():
+    global current_frame, face_recognition_results
+    while True:
+        if current_frame is not None:
+            with frame_lock:
+                frame = current_frame.copy()
+            
+            # Convert frame to RGB for face recognition
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            face_locations = face_recognition.face_locations(frame_rgb)
+            face_encodings = face_recognition.face_encodings(frame_rgb, face_locations)
+
+            face_names = []
+            for face_encoding in face_encodings:
+                matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+                name = "Unknown"
+                if True in matches:
+                    first_match_index = matches.index(True)
+                    name = known_face_names[first_match_index]
+                face_names.append(name)
+
+            face_recognition_results = (face_locations, face_names)
+
+def display_frames():
+    frame_count = 0
+    start_time = time.time()  # Start time for FPS calculation
+    frame_skip = 5  # Process every 5th frame
+
+    while True:
+        if current_frame is not None:
+            with frame_lock:
+                frame = current_frame.copy()
+            
+            # Draw results on the original frame
+            if face_recognition_results:
+                face_locations, face_names = face_recognition_results
+                for (top, right, bottom, left), name in zip(face_locations, face_names):
+                    # Scale back the face locations to original frame size
+                    scale_factor = 4  # because we resized frame by 0.25
+                    top = int(top * scale_factor)
+                    right = int(right * scale_factor)
+                    bottom = int(bottom * scale_factor)
+                    left = int(left * scale_factor)
+                    
+                    cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
+                    cv2.rectangle(frame, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
+                    font = cv2.FONT_HERSHEY_DUPLEX
+                    cv2.putText(frame, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
+
+            # Resize frame back to original size
+            frame = cv2.resize(frame, (frame_in_w, frame_in_h))
+
+            frame_count += 1
+            if frame_count % frame_skip == 0:
+                # Allocate a new frame for DisplayPort
+                outframe = displayport.newframe()
+                if outframe is None:
+                    print("Failed to allocate new frame.")
+                    continue
+
+                # Display the processed frame on the DisplayPort
+                outframe[:] = frame
+                try:
+                    displayport.writeframe(outframe)
+                except Exception as e:
+                    print(f"Error writing processed frame: {e}")
+
+            # Calculate and print FPS every second
+            elapsed_time = time.time() - start_time
+            if elapsed_time > 1.0:
+                fps = frame_count / elapsed_time
+                print(f"FPS: {fps:.2f}")
+                frame_count = 0
+                start_time = time.time()
+
+# Start threads for capturing, processing, and displaying frames
+capture_thread = Thread(target=capture_frames, daemon=True)
+process_thread = Thread(target=process_frame, daemon=True)
+display_thread = Thread(target=display_frames, daemon=True)
+
+capture_thread.start()
+process_thread.start()
+display_thread.start()
+
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    print("Interrupted by user.")
+finally:
+    videoIn.release()
+    displayport.close()
+    cv2.destroyAllWindows()
+
+# output
+
+DisplayPort configured to 640x480.
+FPS: 0.50
+FPS: 1.14
+FPS: 1.09
+FPS: 1.12
+FPS: 1.64
+FPS: 3.76
+FPS: 0.52
+FPS: 1.17
+FPS: 1.09
+FPS: 1.12
+FPS: 1.09
+FPS: 1.12
+FPS: 2.18
+FPS: 1.12
+FPS: 2.18
+FPS: 0.56
+FPS: 1.38
+FPS: 1.58
+FPS: 0.54
+FPS: 1.58
+FPS: 1.08
+FPS: 1.64
+FPS: 1.67
+FPS: 0.57
+FPS: 0.56
+FPS: 1.64
+FPS: 1.63
+FPS: 8.12
+FPS: 0.58
+FPS: 0.58
+FPS: 1.59

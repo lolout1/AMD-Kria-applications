@@ -1,0 +1,13 @@
+model {
+   name : "facerec_pretrained_resnet20"
+   kernel {
+      name: "facerec_pretrained_resnet20"
+      mean: 127.5
+      mean: 127.5
+      mean: 127.5
+      scale: 0.007843
+      scale: 0.007843
+      scale: 0.007843
+   }
+}
+
