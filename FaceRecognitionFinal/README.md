@@ -1,0 +1,1 @@
+On the Kria KV260 go download the git via www.get https://github.com/Xilinx/Vitis-AI.git as per documentation on Vitis 3.0 AI Library and KV260 User Guide documentation. Vitis AI library is needed to reference the VVAS framework and the Vitis AI accelerated libraries.

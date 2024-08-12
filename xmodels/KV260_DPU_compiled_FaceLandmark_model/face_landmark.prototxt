@@ -1,0 +1,12 @@
+model {
+   name : "face_landmark"
+   kernel {
+      name: "landmark_attr_v1_7x"
+      mean: 128.0
+      mean: 128.0
+      mean: 128.0
+      scale: 0.0078125
+      scale: 0.0078125
+      scale: 0.0078125
+   }
+}
