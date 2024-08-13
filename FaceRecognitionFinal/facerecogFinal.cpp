@@ -7,31 +7,37 @@
 #include <array>
 #include <vector>
 #include <chrono>
+#include <sstream>
+#include <thread>
 
-// Function to normalize feature vector
-std::vector<float> normalize_feature(const std::array<int8_t, 512>& feature) {
-    std::vector<float> normalized(feature.size());
-    float norm = 0.0;
-    for (size_t i = 0; i < feature.size(); ++i) {
-        norm += feature[i] * feature[i];
+// Function to compute the norm of a feature vector
+float feature_norm(const int8_t *feature) {
+    int sum = 0;
+    for (int i = 0; i < 512; ++i) {
+        sum += feature[i] * feature[i];
     }
-    norm = std::sqrt(norm);
-    for (size_t i = 0; i < feature.size(); ++i) {
-        normalized[i] = static_cast<float>(feature[i]) / norm;
-    }
-    return normalized;
+    return 1.f / sqrt(sum);
 }
 
-// Function to calculate cosine similarity between two feature vectors
-float calculate_cosine_similarity(const std::array<int8_t, 512>& f1, const std::array<int8_t, 512>& f2) {
-    auto nf1 = normalize_feature(f1);
-    auto nf2 = normalize_feature(f2);
-
-    float dot_product = 0.0;
-    for (size_t i = 0; i < nf1.size(); ++i) {
-        dot_product += nf1[i] * nf2[i];
+// Function to compute the dot product of two vectors
+static float feature_dot(const int8_t *f1, const int8_t *f2) {
+    int dot = 0;
+    for (int i = 0; i < 512; ++i) {
+        dot += f1[i] * f2[i];
     }
-    return dot_product;
+    return static_cast<float>(dot);
+}
+
+// Function to calculate similarity score
+float feature_compare(const int8_t *feature, const int8_t *feature_lib) {
+    float norm = feature_norm(feature);
+    float feature_norm_lib = feature_norm(feature_lib);
+    return feature_dot(feature, feature_lib) * norm * feature_norm_lib;
+}
+
+// Function to map the similarity score
+float score_map(float score) {
+    return 1.0 / (1 + exp(-12.4 * score + 3.763));
 }
 
 // Function to process face detection and recognition results
@@ -46,14 +52,15 @@ cv::Mat process_result(cv::Mat &m1, const vitis::ai::FaceDetectRecogFixedResult 
         float max_similarity = -1.0;
         std::string best_match = "Unknown";
         for (const auto& ref : reference_features) {
-            float similarity_score = calculate_cosine_similarity(result.features[i], ref.second);
+            float similarity_score = feature_compare(result.features[i].data(), ref.second.data());
             if (similarity_score > max_similarity) {
                 max_similarity = similarity_score;
                 best_match = ref.first;
             }
         }
 
-        std::string similarity_text = (max_similarity > 0.65 ? std::string("Abheek") : std::string("Unknown")) + ": " + std::to_string(max_similarity);
+        float mapped_score = score_map(max_similarity);
+        std::string similarity_text = (mapped_score > 0.65 ? "Abheek" : "Unknown") + std::string(": ") + std::to_string(mapped_score);
 
         // Draw a rectangle around each detected face with the best match similarity score
         cv::rectangle(image,
@@ -75,34 +82,53 @@ cv::Mat process_result(cv::Mat &m1, const vitis::ai::FaceDetectRecogFixedResult 
     return image;  // Return the processed image
 }
 
+// Parse resolution from a string formatted as "WIDTHxHEIGHT"
+bool parse_resolution(const std::string& res_str, int& width, int& height) {
+    std::stringstream ss(res_str);
+    char x;
+    return (ss >> width >> x >> height) && (x == 'x');
+}
+
 int main(int argc, char *argv[]) {
     google::InitGoogleLogging(argv[0]);
 
-    if (argc < 6) {
-        std::cerr << "Usage: " << argv[0] << " <detection_model> <landmark_model> <recognition_model> <video_source> <reference_image1> [<reference_image2> ...]" << std::endl;
+    // Hardcoded model paths
+    std::string detection_model = "densebox_320_320";
+    std::string landmark_model = "face_landmark";
+    std::string recognition_model = "facerec-resnet20_mixed_pt";
+
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <video_source> <reference_image1> [<reference_image2> ...] [-f WIDTHxHEIGHT]" << std::endl;
         return 1;
     }
 
-    std::string detection_model = argv[1];
-    std::string landmark_model = argv[2];
-    std::string recognition_model = argv[3];
-    std::string video_source = argv[4];
+    std::string video_source = argv[1];
+    int output_width = 1920;  // Default width
+    int output_height = 1080; // Default height
 
-    // Load and extract features from reference images
+    // Parse command-line arguments for reference images and optional output size
     std::vector<std::pair<std::string, std::array<int8_t, 512>>> reference_features;
     auto face_detect_recog = vitis::ai::FaceDetectRecog::create(detection_model, landmark_model, recognition_model, true);
 
-    for (int i = 5; i < argc; ++i) {
-        cv::Mat reference_image = cv::imread(argv[i]);
-        if (reference_image.empty()) {
-            std::cerr << "Error: Could not load reference image " << argv[i] << std::endl;
-            continue;
-        }
-        auto ref_results = face_detect_recog->run_fixed(reference_image);
-        if (!ref_results.features.empty()) {
-            reference_features.emplace_back(argv[i], ref_results.features[0]);
+    for (int i = 2; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "-f" && i + 1 < argc) {
+            if (!parse_resolution(argv[++i], output_width, output_height)) {
+                std::cerr << "Invalid resolution format. Use WIDTHxHEIGHT." << std::endl;
+                return 1;
+            }
         } else {
-            std::cerr << "Error: Could not extract features from reference image " << argv[i] << std::endl;
+            cv::Mat reference_image = cv::imread(arg);
+            if (reference_image.empty()) {
+                std::cerr << "Error: Could not load reference image " << arg << std::endl;
+                continue;
+            }
+            auto ref_results = face_detect_recog->run_fixed(reference_image);
+            if (!ref_results.features.empty()) {
+                reference_features.emplace_back(arg, ref_results.features[0]);
+            } else {
+                std::cerr << "Error: Could not extract features from reference image " << arg << std::endl;
+            }
         }
     }
 
@@ -127,12 +153,14 @@ int main(int argc, char *argv[]) {
     while (cap.read(frame)) {
         auto t1 = std::chrono::high_resolution_clock::now();
 
+        // Resize frame to fixed processing resolution
+      //  cv::resize(frame, frame, cv::Size(320, 320));
+
         // Store captured frames into the batch
-        batch_frames[frame_count % batch_size] = frame.clone();
+        batch_frames[frame_count % batch_size] = frame;
         frame_count++;
 
         if (frame_count % batch_size == 0) {
-            // Measure time for running detection and recognition in batch
             auto t2 = std::chrono::high_resolution_clock::now();
             auto results_batch = face_detect_recog->run_fixed(batch_frames);
             auto t3 = std::chrono::high_resolution_clock::now();
@@ -142,16 +170,18 @@ int main(int argc, char *argv[]) {
             // Process results and display
             for (size_t i = 0; i < batch_size; ++i) {
                 auto display_frame = process_result(batch_frames[i], results_batch[i], reference_features, fps);
+
+                // Resize to specified output resolution
+   //             cv::resize(display_frame, display_frame, cv::Size(output_width, output_height));
+
                 cv::imshow("Face Detection and Recognition", display_frame);
                 if (cv::waitKey(1) >= 0) break;  // Exit on any key press
             }
 
-            // Measure total loop time including processing and display
             auto t4 = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> loop_time = t4 - t1;
             std::cout << "Total Loop Time: " << loop_time.count() << " seconds" << std::endl;
 
-            // Calculate and display FPS
             auto end_time = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed = end_time - start_time;
             if (elapsed.count() > 1.0) {
