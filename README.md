@@ -9,11 +9,10 @@ To run the application, enter the following command in the terminal when all the
 
 ./facialdetect_recog /dev/video2 3.jpg -f 1920x1080 or  ( ./executableName + /video_format # (ex. mp4 file or webcam input) + picturesofPeopletoRecognize.jpg + ( -f + Monitor Resolution) ex. -f 1080x720 or ex. -f 1920x1080 ).
 
+The output will be a videostream displayed to the HDMI/display port connected to the KV260 where the fps will be +1/2 fps within the max fps capabilities of your webcam. This means latency is close to none and throughput is near perfect for webcam configurations up to 60 fps. 
 
 
-Benchmarks
-
-
+To compare with other facial recognition applications I have included a benchmarks folder. 
 
 It is worth nothing the KV260 can also run pre built facial recognition libraries such as dlib or faceNET from python. However, even on an actual computer with an above average GPU, the fps experiences a harsh penalty due to the ineficciency of these libraries. Running on Pynq via Jupyter Notebook on my Kria KV260, I experienced at lowest .5 fps peaking at 3-5 fps after siginificant optimization. It is clear to me I can do better if I utilize the various acceleration options.
 
