@@ -208,4 +208,4 @@ int main(int argc, char *argv[]) {
     cv::destroyAllWindows();
     return 0;
 }
-//./face_recognition_app /dev/video0 reference1.jpg reference2.jpg -f 1920x1080 -o output.mp4
+// To run: ( ./face_recognition_app /dev/video0 reference1.jpg reference2.jpg -f 1920x1080 -o output.mp4 )in terminal @file directory
