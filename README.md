@@ -18,7 +18,6 @@ To run the application, enter the following command in the terminal when all the
 
 
 
-
 It is worth nothing the KV260 can run pre built facial recognition libraries such as dlib or faceNET from python. However, even on an actual computer with an above average GPU, the fps experiences a harsh penalty due to the ineficciency of these libraries. Running on Pynq via Jupyter Notebook on my Kria KV260, I experienced at lowest .5 fps peaking at 3-5 fps after siginificant optimization. It is clear to me I can do better if I utilize the various acceleration options.
 
 To start, I decided to train, quantize, and compile my model to match the hardware (DPU IP/overlay) and software platform running on the Petalinux Environment on the Kria KV260. After, quantizastion and cross-compilation, deployment of the model to the Kria KV260 Petalinux 2022.2+ environment is achieved by writing one or more scripts to achieve goals such as inference, pre, and post processing which will then be compiled via CMAKE into a buildable executeable. In 'FaceRecognitionFinal' I have included my inference script including pre/post processing where cosine simularity is used to calculate a similarity value where a label will be generated for the face according to a thresh hold value. 
