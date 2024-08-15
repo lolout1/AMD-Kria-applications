@@ -4,9 +4,7 @@ This repository will be an ongoing project of mine showcasing a variety of appli
 
 It is worth nothing the KV260 can run pre built facial recognition libraries such as dlib or faceNET from python. However, even on an actual computer with an above average GPU, the fps experiences a harsh penalty due to the ineficciency of these libraries. Running on Pynq via Jupyter Notebook on my Kria KV260, I experienced at lowest .5 fps peaking at 3-5 fps after siginificant optimization. It is clear to me I can do better if I utilize the various acceleration options.
 
-To start, I decided to train, quantize, and compile my model to match the hardware (DPU IP and overlay) and software platform running on the Petalinux Environment on the Kria KV260. 
-
-
+To start, I decided to train, quantize, and compile my model to match the hardware (DPU IP/overlay) and software platform running on the Petalinux Environment on the Kria KV260. After, quantizastion and cross-compilation, deployment of the model to the Kria KV260 Petalinux 2022.2+ environment is achieved by writing one or more scripts to achieve goals such as inference, pre, and post processing which will then be compiled via CMAKE into a buildable executeable. In 'FaceRecognitionFinal' I have included my inference script including pre/post processing where cosine simularity is used to calculate a similarity value where a label will be generated for the face according to a thresh hold value. 
 
 The Kria KV260 mounts the Kria-26 SOM to a development board providing a ready to use hardware set up without the need of purchasing custom hardware. The Xilinx Zynq UltraScale+ MPSoC combines a 6 real-time ARM Cortex processors running embedded linux with FPGA fabric enabling acceleration/optimization for a variety of applications. AMD/Xilinx provides a comprehensive toolchain to aid you in the development and deployment of applications. 
 
