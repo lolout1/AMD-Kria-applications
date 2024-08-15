@@ -1,6 +1,6 @@
 # AMD-Kria-applications         https://youtu.be/ldR44BJjO9E
 
-This repository will be an ongoing project of mine showcasing a variety of applications I have built on the Kria KV260. My current goal is to fully accelerate my custom built facial recognition app which takes imput from the usb input via Gstreamer/VVAS and processes it to recognize my face. The output will be shown on DP/HDMI/X-11 forwarding.
+This repository will be an ongoing project of mine showcasing a variety of applications I have built on the Kria KV260. My first project was the acceleration of my custom built facial recognition app which takes imput from the usb input via Gstreamer/VVAS and processes it to recognize my face. The output will be shown on DP/HDMI/X-11 forwarding.
 
 It is worth nothing the KV260 can run pre built facial recognition libraries such as dlib or faceNET from python. However, even on an actual computer with an above average GPU, the fps experiences a harsh penalty due to the ineficciency of these libraries. Running on Pynq via Jupyter Notebook on my Kria KV260, I experienced at lowest .5 fps peaking at 3-5 fps after siginificant optimization. It is clear to me I can do better if I utilize the various acceleration options.
 
