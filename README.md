@@ -2,7 +2,12 @@
 
 This repository will be an ongoing project of mine showcasing a variety of applications I have built on the Kria KV260. My first project was a hardware accelerated custom built facial recognition app which takes input from a usb webcam or .mp4 file via Gstreamer/VVAS and processes it to recognize my face. The output will be shown on DP/HDMI/X-11 forwarding.
 
-The youtube link above shows how the program could be run on the KRIA KV260. The monitor running the script is connected to the KV260 via serial port while the monitor displaying the output of the script is connected to the Kria KV260 via hdmi. The video footage seen is the footage from a webcam connected to the Kria KV260 via USB 3.0 which is then processed via the facial recognition application to detect any faces and label them. The names and pictures of the people detected in my program was designed to be user-configurable when running the command to start the script. For example, running the command ./facialdetect_recog /dev/video2 3.jpg -f 1920x1080 or  ( ./executableName + /video_format # (ex. mp4 file or webcam input) + picturesofPeopletoRecognize.jpg + ( -f + Monitor Resolution) ex. -f 1080x720 or ex. -f 1920x1080 ).
+The youtube link above shows how the program could be run on the KRIA KV260. The monitor running the script is connected to the KV260 via serial port while the monitor displaying the output of the script is connected to the Kria KV260 via hdmi. The video footage seen is the footage from a webcam connected to the Kria KV260 via USB 3.0 which is then processed via the facial recognition application to detect any faces and label them. The names and pictures of the people detected in my program was designed to be user-configurable when running the command to start the script.
+
+
+To run the application, enter the following command in the terminal when all the necessary files are in your current directory.
+
+./facialdetect_recog /dev/video2 3.jpg -f 1920x1080 or  ( ./executableName + /video_format # (ex. mp4 file or webcam input) + picturesofPeopletoRecognize.jpg + ( -f + Monitor Resolution) ex. -f 1080x720 or ex. -f 1920x1080 ).
 
 It is worth nothing the KV260 can run pre built facial recognition libraries such as dlib or faceNET from python. However, even on an actual computer with an above average GPU, the fps experiences a harsh penalty due to the ineficciency of these libraries. Running on Pynq via Jupyter Notebook on my Kria KV260, I experienced at lowest .5 fps peaking at 3-5 fps after siginificant optimization. It is clear to me I can do better if I utilize the various acceleration options.
 
