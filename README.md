@@ -12,7 +12,7 @@ To run the application, enter the following command in the terminal when all the
 The output will be a videostream displayed to the HDMI/display port connected to the KV260 where the fps will be +1/2 fps within the max fps capabilities of your webcam. This means latency is close to none and throughput is near perfect for webcam configurations up to 60 fps. 
 
 
-To compare with other facial recognition applications I have included a benchmarks folder. 
+To compare with other facial recognition applications I have included a benchmarks folder.  https://github.com/lolout1/AMD-Kria-applications/tree/main/bench
 
 It is worth nothing the KV260 can also run pre built facial recognition libraries such as dlib or faceNET from python. However, even on an actual computer with an above average GPU, the fps experiences a harsh penalty due to the ineficciency of these libraries. Running on Pynq via Jupyter Notebook on my Kria KV260, I experienced at lowest .5 fps peaking at 3-5 fps after siginificant optimization. It is clear to me I can do better if I utilize the various acceleration options.
 
