@@ -1,4 +1,4 @@
-# AMD-Kria-applications         https://youtu.be/ldR44BJjO9E
+# AMD-Kria-applications         https://youtu.be/-e7vtFMeb6o
 
 This repository will be an ongoing project of mine showcasing a variety of applications I have built on the Kria KV260. My first project was a hardware accelerated custom built facial recognition app which takes input from a usb webcam or .mp4 file via Gstreamer/VVAS and processes it to recognize my face. The output will be shown on DP/HDMI/X-11 forwarding.
 
