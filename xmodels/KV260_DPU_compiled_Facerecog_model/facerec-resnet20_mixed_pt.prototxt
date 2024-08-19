@@ -1,7 +1,7 @@
 model {
-   name : "facerec_pretrained_resnet20"
+   name : "rec_Abheek_resnet20"
    kernel {
-      name: "facerec_pretrained_resnet20"
+      name: "rec_Abheek_resnet20"
       mean: 127.5
       mean: 127.5
       mean: 127.5
