@@ -26,5 +26,7 @@ The Kria KV260 mounts the Kria-26 SOM to a development board providing a ready t
   Framework for video analytics capabiltiies such as utilizing Gstreamer which is much faster at communicating with the I/O peripherials compared to Open CV for example.
 -   Vivado Platform
   Generates custom overlay, allows you to configure and customize DPU/any Hardware
-  Vitis software toolchain
+- Vitis software toolchain
+Provides a suite of tools for developing applications on Xilinx FPGAs, from high-level programming to hardware-specific customization or high level synthesis.
+  
   
