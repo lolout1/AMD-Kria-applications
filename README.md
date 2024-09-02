@@ -4,7 +4,7 @@ This repository will be an ongoing project of mine showcasing a variety of appli
 
 The youtube link above shows how the program could be run on the KRIA KV260. The monitor running the script is connected to the KV260 via serial port while the monitor displaying the output of the script is connected to the Kria KV260 via hdmi. The video footage seen is the footage from a webcam connected to the Kria KV260 via USB 3.0 which is then processed via the facial recognition application to detect any faces and label them. The names and pictures of the people detected in my program was designed to be user-configurable when running the command to start the script.
 
-Models were trained via CUDA Docker utilizing GPU acceleration then scp onto target Kria KV260 device. 
+Models were trained via CUDA Docker utilizing GPU acceleration then scp onto target Kria KV260 device after quantization and cross compilation onto the Kria KV260 Peta Linux Environment 
 
 To run the application, enter the following command in the terminal when all the necessary files are in your current directory.
 
