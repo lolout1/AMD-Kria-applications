@@ -16,7 +16,7 @@ This repository showcases high-performance embedded vision applications built on
 
 ### Zero-Copy Pipeline Architecture
 
-Custom Vivado platform with hardware preprocessing pipeline eliminates all CPU memory copies. Camera frames flow through Video Processing Subsystem (hardware resize/color conversion) → Vitis HLS preprocessing kernels (normalization) → AXI DMA → device-only DDR buffers shared with DPU. The ARM CPU only touches final inference results (bounding boxes and embeddings), never the raw pixel data. **Result: 60% memory bandwidth reduction and 2ms end-to-end latency.**
+Custom Vivado platform with hardware preprocessing pipeline eliminates all CPU memory copies. Camera frames flow through Video Processing Subsystem (hardware resize/color conversion) → Vitis HLS preprocessing kernels (normalization) → AXI DMA → device-only DDR buffers shared with DPU. The ARM CPU only touches final inference results (bounding boxes and embeddings), never the raw pixel data. **Result: 60% memory bandwidth reduction and milli-second end-to-end latency.**
 
 ---
 
